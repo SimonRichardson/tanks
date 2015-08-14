@@ -1,9 +1,4 @@
 var daggy = require('daggy'),
-    Lens  = require('fantasy-lenses').Lens,
-
-    lenses = {
-        x: Lens.objectLens('x')
-    },
 
     Angle = daggy.tagged('x');
 
@@ -19,6 +14,16 @@ Angle.Full         = Angle(Angle.TwoPi);
 
 Angle.degrees = function(degrees) {
     return Angle(normalize((degrees * Angle.Pi) / 180));
+};
+
+Angle.prototype.chain = function(f) {
+    return f(this.x);
+};
+
+Angle.prototype.map = function(f) {
+    return this.chain(function(x) {
+        return Angle(f(this.x));
+    });
 };
 
 Angle.prototype.sin = function() {
@@ -38,28 +43,33 @@ Angle.prototype.degrees = function() {
 };
 
 Angle.prototype.opposite = function() {
-    var l = lenses.x.run(this);
-    return l.set(normalize(l.get() + Angle.Pi));
+    return this.map(function(x) {
+        return normalize(x + Angle.Pi);
+    });
 };
 
 Angle.prototype.add = function(x) {
-    var l = lenses.x.run(this);
-    return l.set(normalize(l.get() + x.x));
+    return modify(this, x, function(a, b) {
+        return a + b;
+    });
 };
 
 Angle.prototype.minus = function(x) {
-    var l = lenses.x.run(this);
-    return l.set(normalize(l.get() - x.x));
+    return modify(this, x, function(a, b) {
+        return a - b;
+    });
 };
 
 Angle.prototype.multiply = function(x) {
-    var l = lenses.x.run(this);
-    return l.set(normalize(l.get() * x));
+    return modify(this, x, function(a, b) {
+        return a * b;
+    });
 };
 
 Angle.prototype.divide = function(x) {
-    var l = lenses.x.run(this);
-    return l.set(normalize(l.get() / x));
+    return this.map(function(y) {
+        return y / x;
+    });
 };
 
 Angle.prototype.isLeftOf = function(x) {
@@ -79,6 +89,14 @@ Angle.prototype.addUpTo = function(x, y) {
     var added = this.add(x);
     return this.isLeftOf(y) != added.isLeftOf(y) ? y : x;
 };
+
+function modify(x, y, f) {
+    return x.chain(function(a) {
+        return y.map(function(b) {
+            return normalize(f(a, b));
+        }); 
+    });
+}
 
 function normalize(radians) {
     var x = (radians / Angle.TwoPi) | 0,
